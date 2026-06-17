@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionnaire médical</title>
+<style>
+:root{--brand:#1f6feb;--teal:#0fb6a8;--ink:#1b2333;--muted:#6b7689;--line:#e7ebf3;--bg:#f4f6fb;--green:#16a34a;--red:#dc2626;--amber:#d97706}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 70px}
+.hero{background:linear-gradient(135deg,var(--brand),var(--teal));color:#fff;padding:24px 22px;border-radius:0 0 22px 22px;text-align:center}
+.hero .logo{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.18);display:grid;place-items:center;margin:0 auto 10px}
+.hero h1{margin:0;font-size:21px}.hero p{margin:5px 0 0;opacity:.92;font-size:13.5px}
+.bar{height:6px;border-radius:6px;background:#e7ebf3;overflow:hidden;margin:16px 0 4px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--teal));transition:width .25s}
+.barlbl{font-size:12px;color:var(--muted);text-align:right;margin-bottom:6px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(20,30,60,.05),0 10px 30px rgba(20,30,60,.05);padding:20px;margin-top:14px}
+.card h2{margin:0 0 4px;font-size:18px}.card .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.sec-tag{display:inline-block;background:#eef4ff;color:var(--brand);font-weight:700;font-size:12px;padding:3px 9px;border-radius:20px;margin-bottom:10px}
+.field{margin-bottom:14px}.field label{display:block;font-size:13.5px;font-weight:600;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;background:#fff}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(31,111,235,.12)}
+.field .det{margin-top:8px}
+.yn{display:flex;gap:10px}
+.yn button{flex:1;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:11px;padding:12px;font-size:15px;font-weight:700;cursor:pointer}
+.yn button.yes.on{background:#fdecec;border-color:var(--red);color:var(--red)}
+.yn button.no.on{background:#eef7f0;border-color:var(--green);color:var(--green)}
+.chips{display:flex;gap:9px;flex-wrap:wrap}
+.chips button{border:1.5px solid var(--line);background:#fff;border-radius:11px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+.chips button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:11px;padding:12px 16px;font-size:15px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.ghost{border:0;color:var(--brand);background:transparent;padding:8px 0}
+.btn.block{width:100%}
+.nav{display:flex;gap:10px;margin-top:18px}
+.consent{background:#f7f9fd;border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13.5px;line-height:1.5}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:13.5px;cursor:pointer}
+.check input{width:20px;height:20px;flex-shrink:0;margin-top:1px}
+.recap{font-size:14px}
+.recap .rsec{font-weight:700;color:var(--brand);margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.4px}
+.recap .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #f0f3f9}
+.recap .row .q{color:var(--muted)}.recap .row .a{font-weight:600;text-align:right}
+.alertbox{border-radius:11px;padding:12px 14px;margin-bottom:9px;display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.alertbox.crit{background:#fdecec;border:1px solid #f6c9c9}.alertbox.crit b{color:var(--red)}
+.alertbox.warn{background:#fff5e8;border:1px solid #f6e0bf}.alertbox.warn b{color:var(--amber)}
+.alertbox.info{background:#eef4ff;border:1px solid #d6e4ff}.alertbox.info b{color:var(--brand)}
+.sigwrap{border:1.5px dashed #c5cee0;border-radius:12px;background:#fff;position:relative}
+.sigwrap canvas{width:100%;height:190px;display:block;touch-action:none;border-radius:12px}
+.sigwrap .ph{position:absolute;inset:0;display:grid;place-items:center;color:#c0c8d8;font-size:14px;pointer-events:none}
+.ok{text-align:center;padding:14px 8px}
+.ok .big{width:70px;height:70px;border-radius:50%;background:#e7f7ee;color:var(--green);display:grid;place-items:center;font-size:36px;margin:0 auto 14px}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:22px;line-height:1.6}
+.err{text-align:center;color:var(--muted);padding:24px 10px}
+.lockmsg{background:#eef7f0;border:1px solid #cdeccf;color:#15803d;border-radius:11px;padding:12px 14px;font-size:13.5px;font-weight:600}
+.req{color:var(--red)}
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="logo"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3c-2.2 0-3 1.2-5 1.2C5.2 4.2 4 3.8 4 6.5c0 3 .6 5.2 1.6 8.2C6.4 18 7.2 21 8.6 21c1.3 0 1.5-2.5 3.4-2.5S14 21 15.4 21c1.4 0 2.2-3 3-6.3C19.4 11.7 20 9.5 20 6.5c0-2.7-1.2-2.3-3-2.3-2 0-2.8-1.2-5-1.2Z" fill="#fff"/></svg></div>
+  <h1 id="cabname">Questionnaire médical</h1>
+  <p>Avant votre rendez-vous · sécurisé &amp; confidentiel</p>
+</div>
+<div class="wrap">
+  <div id="app"></div>
+  <div class="foot">🔒 Vos données de santé sont confidentielles et transmises uniquement à votre cabinet dentaire.<br>Propulsé par Weclever · Suite Add-ons · Conforme RGPD</div>
+</div>
+<script>
+"use strict";
+/* ===================================================================
+   CONFIG — à renseigner par le cabinet (mêmes valeurs que dans l'app) :
+   l'URL du projet Supabase et la clé "anon public". La clé anon est
+   prévue pour être publique côté client (protégée par RLS côté base).
+   =================================================================== */
+var SUPA={
+  url:"https://kajecbhiylgmmczukcuv.supabase.co",
+  key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthamVjYmhpeWxnbW1jenVrY3V2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTc5NDksImV4cCI6MjA5NzI3Mzk0OX0.b8YSDuoBhwDMsqSW3_vedpZoFN1v5modrHb8nOwba3o"
+};
+function supaReady(){return /^https?:\/\//.test(SUPA.url)&&SUPA.key&&SUPA.url.indexOf("VOTRE-PROJET")<0&&SUPA.key.indexOf("VOTRE_CLE")<0;}
+function supaHeaders(){return {apikey:SUPA.key,Authorization:"Bearer "+SUPA.key,"Content-Type":"application/json"};}
+function supaGet(path){return fetch(SUPA.url.replace(/\/$/,"")+"/rest/v1/"+path,{headers:supaHeaders()}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(r.status+" "+t);});return r.json();});}
+function supaUpsert(table,rows,onConflict){return fetch(SUPA.url.replace(/\/$/,"")+"/rest/v1/"+table+"?on_conflict="+onConflict,{method:"POST",headers:Object.assign(supaHeaders(),{Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows)}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(r.status+" "+t);});return true;});}
+// cache mémoire de l'unique questionnaire (celui du token), source de l'UI
+var B={cabinet:"votre cabinet dentaire",items:[],log:[]};
+function store(){return B;}
+var pushTimer=null;
+function schedulePush(){if(pushTimer)clearTimeout(pushTimer);pushTimer=setTimeout(pushItemNow,700);}
+function pushItemNow(){if(pushTimer){clearTimeout(pushTimer);pushTimer=null;}if(!IT||!supaReady())return Promise.resolve(false);
+  return supaUpsert("mq_items",[{id:IT.id,token:IT.token,data:IT}],"id").then(function(){return true;});}
+function el(tag,attrs,kids){var n=document.createElement(tag);attrs=attrs||{};for(var k in attrs){if(k==="class")n.className=attrs[k];else if(k==="html")n.innerHTML=attrs[k];else if(k.slice(0,2)==="on"&&typeof attrs[k]==="function")n.addEventListener(k.slice(2),attrs[k]);else if(attrs[k]!=null&&attrs[k]!==false)n.setAttribute(k,attrs[k]);}
+  kids=kids==null?[]:(Array.isArray(kids)?kids:[kids]);
+  kids.forEach(function(c){if(c==null||c===false)return;n.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(c):c);});return n;}
+function fmtDate(iso){if(!iso)return "—";return new Date(iso+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});}
+function norm(s){return (s||"").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g," ").replace(/\s+/g," ").trim();}
+
+/* MQ_DEF — miroir EXACT de la définition de la Suite (weclever.html) */
+var MQ_DEF=[
+ {id:"A",t:"Identité du patient",qs:[
+   {k:"nom",q:"Nom",t:"text",req:1},{k:"prenom",q:"Prénom",t:"text",req:1},{k:"naissance",q:"Date de naissance",t:"date",req:1},
+   {k:"sexe",q:"Sexe",t:"choice",opts:["Femme","Homme","Autre"]},{k:"tel",q:"Téléphone",t:"text"},{k:"email",q:"Email",t:"text"},
+   {k:"adresse",q:"Adresse",t:"text"},{k:"secu",q:"N° de sécurité sociale",t:"text"},{k:"mutuelle",q:"Mutuelle",t:"text"}]},
+ {id:"B",t:"Personne à prévenir",qs:[
+   {k:"urg_nom",q:"Nom de la personne à prévenir",t:"text"},{k:"urg_lien",q:"Lien avec vous",t:"text"},{k:"urg_tel",q:"Téléphone",t:"text"}]},
+ {id:"C",t:"Médecin traitant",qs:[
+   {k:"mt_nom",q:"Nom du médecin traitant",t:"text"},{k:"mt_ville",q:"Ville",t:"text"},{k:"mt_tel",q:"Téléphone",t:"text"}]},
+ {id:"D",t:"Antécédents médicaux",qs:[
+   {k:"chronique",q:"Avez-vous une maladie chronique ?",t:"bool",detail:1,a:{lvl:"vigilance",title:"Maladie chronique"}},
+   {k:"hospit",q:"Avez-vous déjà été hospitalisé ?",t:"bool",detail:1},
+   {k:"chirurgie",q:"Avez-vous déjà subi une intervention chirurgicale ?",t:"bool",detail:1},
+   {k:"ald",q:"Avez-vous une affection longue durée (ALD) ?",t:"bool",detail:1,a:{lvl:"vigilance",title:"Affection longue durée"}},
+   {k:"malaise",q:"Avez-vous déjà fait un malaise pendant des soins dentaires ?",t:"bool",detail:1,a:{lvl:"critique",title:"Malaise antérieur pendant des soins"}}]},
+ {id:"E",t:"Allergies",qs:[
+   {k:"al_medic",q:"Allergie médicamenteuse ?",t:"bool",detail:1,a:{lvl:"critique",title:"Allergie médicamenteuse"}},
+   {k:"al_peni",q:"Allergie à la pénicilline ?",t:"bool",a:{lvl:"vigilance",title:"Allergie à la pénicilline"}},
+   {k:"al_anesth",q:"Allergie aux anesthésiques ?",t:"bool",detail:1,a:{lvl:"critique",title:"Allergie aux anesthésiques"}},
+   {k:"al_latex",q:"Allergie au latex ?",t:"bool",a:{lvl:"critique",title:"Allergie au latex"}},
+   {k:"al_iode",q:"Allergie à l'iode ?",t:"bool",a:{lvl:"vigilance",title:"Allergie à l'iode"}},
+   {k:"al_autre",q:"Autre allergie ?",t:"bool",detail:1}]},
+ {id:"F",t:"Traitements en cours",qs:[
+   {k:"medoc",q:"Prenez-vous actuellement des médicaments ?",t:"bool",detail:1,detailLabel:"Lesquels (nom, dosage, fréquence) ?",a:{lvl:"information",title:"Traitement en cours"}}]},
+ {id:"G",t:"Anticoagulants & coagulation",qs:[
+   {k:"anticoag",q:"Prenez-vous des anticoagulants ?",t:"bool",detail:1,a:{lvl:"critique",title:"Anticoagulants"}},
+   {k:"aspirine",q:"Prenez-vous de l'aspirine au long cours ?",t:"bool",a:{lvl:"vigilance",title:"Aspirine au long cours"}},
+   {k:"coag",q:"Avez-vous des troubles de la coagulation ?",t:"bool",detail:1,a:{lvl:"critique",title:"Trouble de la coagulation"}},
+   {k:"saigne",q:"Saignez-vous longtemps après une blessure ?",t:"bool",a:{lvl:"vigilance",title:"Saignement prolongé"}},
+   {k:"hemo",q:"Avez-vous déjà eu une complication hémorragique ?",t:"bool",detail:1,a:{lvl:"critique",title:"Antécédent hémorragique"}}]},
+ {id:"H",t:"Cardiologie",qs:[
+   {k:"cardio",q:"Problème cardiaque ?",t:"bool",detail:1,a:{lvl:"critique",title:"Problème cardiaque"}},
+   {k:"hta",q:"Hypertension ?",t:"bool",a:{lvl:"vigilance",title:"Hypertension"}},
+   {k:"infarctus",q:"Infarctus ?",t:"bool",a:{lvl:"critique",title:"Antécédent d'infarctus"}},
+   {k:"angine",q:"Angine de poitrine ?",t:"bool",a:{lvl:"vigilance",title:"Angine de poitrine"}},
+   {k:"pacemaker",q:"Pacemaker ?",t:"bool",a:{lvl:"critique",title:"Pacemaker"}},
+   {k:"valve",q:"Valve cardiaque ?",t:"bool",a:{lvl:"critique",title:"Valve cardiaque"}},
+   {k:"souffle",q:"Souffle au cœur ?",t:"bool",a:{lvl:"vigilance",title:"Souffle au cœur"}},
+   {k:"endocardite",q:"Antécédent d'endocardite ?",t:"bool",a:{lvl:"critique",title:"Antécédent d'endocardite"}}]},
+ {id:"I",t:"Diabète",qs:[
+   {k:"diabete",q:"Êtes-vous diabétique ?",t:"bool",a:{lvl:"vigilance",title:"Diabète"}},
+   {k:"diab_type",q:"Type",t:"choice",opts:["Type 1","Type 2"],cond:"diabete"},
+   {k:"diab_equil",q:"Diabète équilibré ?",t:"bool",cond:"diabete"},{k:"hba1c",q:"Dernière HbA1c (si connue)",t:"text",cond:"diabete"}]},
+ {id:"J",t:"Respiratoire",qs:[
+   {k:"asthme",q:"Asthme ?",t:"bool",a:{lvl:"vigilance",title:"Asthme"}},{k:"bronchite",q:"Bronchite chronique ?",t:"bool"},
+   {k:"apnee",q:"Apnée du sommeil ?",t:"bool"},{k:"resp_autre",q:"Autre problème respiratoire ?",t:"bool",detail:1}]},
+ {id:"K",t:"Maladies infectieuses / immunité",qs:[
+   {k:"hepatite",q:"Hépatite ?",t:"bool",a:{lvl:"vigilance",title:"Hépatite"}},
+   {k:"vih",q:"VIH ?",t:"bool",a:{lvl:"vigilance",title:"VIH"}},
+   {k:"tuberculose",q:"Tuberculose ?",t:"bool",a:{lvl:"vigilance",title:"Tuberculose"}},
+   {k:"infectieuse",q:"Autre maladie transmissible connue ?",t:"bool",detail:1,a:{lvl:"critique",title:"Maladie infectieuse déclarée"}},
+   {k:"immuno",q:"Immunodépression ?",t:"bool",a:{lvl:"critique",title:"Immunodépression"}},
+   {k:"immunosup",q:"Traitement immunosuppresseur ?",t:"bool",a:{lvl:"critique",title:"Traitement immunosuppresseur"}}]},
+ {id:"L",t:"Traitements lourds",qs:[
+   {k:"chimio",q:"Chimiothérapie ?",t:"bool",a:{lvl:"critique",title:"Chimiothérapie"}},
+   {k:"radio",q:"Radiothérapie ?",t:"bool",a:{lvl:"critique",title:"Radiothérapie"}},
+   {k:"biphos",q:"Bisphosphonates ?",t:"bool",a:{lvl:"critique",title:"Bisphosphonates"}},
+   {k:"denosumab",q:"Dénosumab ?",t:"bool",a:{lvl:"critique",title:"Dénosumab"}},
+   {k:"cortico",q:"Corticothérapie longue durée ?",t:"bool",a:{lvl:"vigilance",title:"Corticothérapie longue durée"}},
+   {k:"greffe",q:"Greffe ?",t:"bool",a:{lvl:"vigilance",title:"Greffe"}},{k:"dialyse",q:"Dialyse ?",t:"bool",a:{lvl:"vigilance",title:"Dialyse"}}]},
+ {id:"M",t:"Grossesse",cond:"sexe=Femme",qs:[
+   {k:"enceinte",q:"Êtes-vous enceinte ?",t:"bool",a:{lvl:"critique",title:"Grossesse"}},
+   {k:"mois",q:"Nombre de mois",t:"num",cond:"enceinte"},{k:"allaite",q:"Allaitez-vous ?",t:"bool"},{k:"projet",q:"Projet de grossesse ?",t:"bool"}]},
+ {id:"N",t:"Habitudes",qs:[
+   {k:"tabac",q:"Tabac ?",t:"bool",a:{lvl:"information",title:"Tabac"}},{k:"cig",q:"Cigarettes / jour",t:"num",cond:"tabac"},
+   {k:"alcool",q:"Alcool ?",t:"bool",a:{lvl:"information",title:"Alcool"}},{k:"drogues",q:"Drogues / stupéfiants ?",t:"bool",a:{lvl:"vigilance",title:"Substances"}},
+   {k:"bruxisme",q:"Bruxisme (grincement) ?",t:"bool"},{k:"anxiete",q:"Anxiété / peur du dentiste ?",t:"bool",a:{lvl:"information",title:"Anxiété"}}]},
+ {id:"O",t:"Informations dentaires",qs:[
+   {k:"motif",q:"Motif de consultation",t:"text"},{k:"douleur",q:"Douleur actuelle ?",t:"bool"},
+   {k:"urgence",q:"Est-ce une urgence ?",t:"bool",a:{lvl:"vigilance",title:"Urgence douloureuse"}},
+   {k:"gencives",q:"Saignement des gencives ?",t:"bool"},{k:"mobilite",q:"Mobilité dentaire ?",t:"bool"},
+   {k:"sensib",q:"Sensibilité au froid/chaud ?",t:"bool"},{k:"dernier_rdv",q:"Dernier RDV chez le dentiste",t:"text"},
+   {k:"prothese",q:"Portez-vous une prothèse ?",t:"bool"},{k:"implants",q:"Avez-vous des implants ?",t:"bool"},{k:"ortho",q:"Traitement orthodontique ?",t:"bool"}]}
+];
+/* moteur d'alertes — identique à la Suite */
+function mqAlerts(answers){var out=[];MQ_DEF.forEach(function(s){s.qs.forEach(function(q){if(!q.a)return;var v=answers[q.k];
+  if(q.t==="bool"&&(v==="oui"||v===true||v==="Oui")){out.push({type:q.k,title:q.a.title,level:q.a.lvl,detail:answers[q.k+"_d"]||""});}});});return out;}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+
+/* ---- conditions d'affichage ---- */
+function secVisible(s,A){if(!s.cond)return true;var p=s.cond.split("=");return norm(A[p[0]])===norm(p[1]);}
+function qVisible(q,A){if(!q.cond)return true;var v=A[q.cond];return v==="oui"||v===true;}
+
+/* ---- état ---- */
+var TOKEN=new URLSearchParams(location.search).get("t")||new URLSearchParams(location.search).get("token");
+var IT=null;            // item courant (référence trouvée par token)
+var A={};               // réponses en cours
+var SEC=0;              // index de section
+var S={view:"consent"}; // consent | form | recap | sign | done | error
+var sessionId="sess_"+Math.random().toString(36).slice(2,10);
+
+function findItem(){for(var i=0;i<B.items.length;i++){if(B.items[i].token===TOKEN)return B.items[i];}return null;}
+function patch(fn){var it=findItem();if(!it)return;B.log=B.log||[];fn(it,B);IT=it;schedulePush();}
+// Le lien sécurisé identifie déjà le patient : pas de saisie d'identité.
+// On marque l'ouverture et on pré-remplit l'identité depuis le dossier.
+function ensureInit(){
+  if(ensureInit._done)return;ensureInit._done=true;
+  if(IT.status==="Envoyé"){patch(function(it,bb){it.status="Ouvert";it.openedAt=new Date().toISOString();bb.log.push({when:it.openedAt,user:it.patientName,action:"Ouverture du lien",detail:""});});}
+  A=Object.assign({},IT.answers||{});
+  // patients Weclever au format "Prénom Nom" (ex. "Martin Dubois")
+  var parts=(IT.patientName||"").trim().split(" ");
+  if(!A.prenom)A.prenom=parts[0]||"";
+  if(!A.nom)A.nom=parts.length>1?parts.slice(1).join(" "):"";
+  if(!A.naissance&&IT.patientBirth)A.naissance=IT.patientBirth;
+}
+
+function visibleSections(){return MQ_DEF.filter(function(s){return secVisible(s,A);});}
+
+function progressPct(){
+  var total=0,done=0;
+  visibleSections().forEach(function(s){s.qs.forEach(function(q){if(!qVisible(q,A))return;total++;var v=A[q.k];if(v!==undefined&&v!=="")done++;});});
+  return total?Math.round(done/total*100):0;
+}
+
+/* ============ RENDU ============ */
+function render(){
+  var b=store();
+  if(b&&b.cabinet)document.getElementById("cabname").textContent="Questionnaire médical";
+  var app=document.getElementById("app");app.innerHTML="";
+  if(!supaReady()){return app.appendChild(errCard("Service non configuré","Le questionnaire en ligne n'est pas encore activé. Contactez votre cabinet dentaire."));}
+  if(!TOKEN){return app.appendChild(errCard("Lien invalide","Ce lien ne contient pas de jeton d'accès. Demandez un nouveau lien à votre cabinet."));}
+  if(BOOTING){return app.appendChild(el("div",{class:"card"},[el("div",{class:"err"},[el("div",{style:"font-size:34px;margin-bottom:8px"},["⏳"]),el("h2",{style:"margin:0 0 6px"},["Chargement…"]),el("div",{class:"sub",style:"margin:0"},["Récupération sécurisée de votre questionnaire."])])]));}
+  if(LOAD_ERR){return app.appendChild(errCard("Connexion impossible","Impossible de joindre le service en ligne pour le moment. Réessayez dans un instant ou contactez votre cabinet."));}
+  IT=findItem();
+  if(!IT){return app.appendChild(errCard("Questionnaire introuvable","Ce lien n'est pas (ou plus) valide. Contactez votre cabinet pour en recevoir un nouveau."));}
+  if(IT.status==="Annulé"){return app.appendChild(errCard("Questionnaire annulé","Ce questionnaire a été annulé par le cabinet."));}
+  if(IT.expiresAt&&IT.expiresAt<todayISO()){return app.appendChild(errCard("Lien expiré","Ce questionnaire a expiré le "+fmtDate(IT.expiresAt)+". Demandez-en un nouveau à votre cabinet."));}
+  // déjà signé → verrouillé (un questionnaire signé ne se modifie jamais)
+  if((IT.status==="Signé"||IT.status==="Vérifié praticien"||IT.status==="Intégré au dossier")&&S.view!=="done"){
+    return app.appendChild(lockedCard());
+  }
+  ensureInit();
+  if(S.view==="consent")return viewConsent(app);
+  if(S.view==="form")return viewForm(app);
+  if(S.view==="recap")return viewRecap(app);
+  if(S.view==="sign")return viewSign(app);
+  if(S.view==="done")return viewDone(app);
+}
+function errCard(t,m){return el("div",{class:"card"},[el("div",{class:"err"},[el("div",{style:"font-size:40px;margin-bottom:8px"},["⚠️"]),el("h2",{style:"margin:0 0 6px"},[t]),el("div",{class:"sub",style:"margin:0"},[m])])]);}
+function lockedCard(){
+  return el("div",{class:"card"},[
+    el("div",{class:"ok"},[el("div",{class:"big"},["🔒"]),el("h2",{style:"margin:0 0 6px"},["Questionnaire déjà signé"]),
+      el("div",{class:"sub",style:"margin:0 0 14px"},["Ce questionnaire a été complété et signé électroniquement le "+fmtDate((IT.signedAt||"").slice(0,10))+". Il ne peut plus être modifié."])]),
+    el("div",{class:"lockmsg"},["✓ Vos informations ont bien été transmises à votre cabinet. Pour toute modification, le cabinet vous enverra un nouveau lien."])]);
+}
+
+/* ---- 1. Consentement ---- */
+function viewConsent(app){
+  var b=store();var cab=(b&&b.cabinet)||"votre cabinet dentaire";
+  var chk=el("input",{type:"checkbox"});
+  var c=el("div",{class:"card"},[
+    el("div",{class:"sec-tag"},["Étape 1 / 4 · Consentement"]),
+    el("h2",{},[IT.previousId?"Mise à jour annuelle":"Consentement & confidentialité"]),
+    el("div",{class:"sub"},["Bonjour "+(IT.patientName||"")+", merci de lire et d'accepter avant de commencer."]),
+    IT.previousId?el("div",{class:"lockmsg",style:"margin-bottom:12px"},["🔄 Mise à jour annuelle de votre questionnaire médical. Vos réponses de l'an dernier sont pré-remplies : vérifiez-les et corrigez ce qui a changé."]):null,
+    el("div",{class:"consent"},[
+      el("p",{style:"margin:0 0 8px"},[el("b",{},["Responsable du traitement : "]),cab+"."]),
+      el("p",{style:"margin:0 0 8px"},[el("b",{},["Finalité : "]),"recueillir votre état de santé afin d'assurer des soins dentaires sûrs et adaptés (prévention des risques médicaux, allergies, interactions)."]),
+      el("p",{style:"margin:0 0 8px"},[el("b",{},["Confidentialité : "]),"vos réponses constituent des données de santé. Elles sont strictement confidentielles, accessibles uniquement à l'équipe soignante de votre cabinet, et conservées dans votre dossier patient."]),
+      el("p",{style:"margin:0"},[el("b",{},["Vos droits (RGPD) : "]),"accès, rectification, effacement. Adressez votre demande à votre cabinet. Aucune donnée n'est cédée à un tiers."])]),
+    el("label",{class:"check"},[chk,el("span",{},["Je comprends la finalité de ce questionnaire, j'accepte que mes réponses soient intégrées à mon dossier médical et je certifie répondre de façon sincère."])]),
+    el("button",{class:"btn primary block",style:"margin-top:16px",onclick:function(){
+        if(!chk.checked){alert("Merci d'accepter le consentement pour continuer.");return;}
+        if(IT.status==="Ouvert"||IT.status==="Envoyé"){patch(function(it,bb){it.status="Commencé";it.startedAt=new Date().toISOString();});}
+        SEC=0;S.view="form";render();
+      }},["J'accepte et je commence →"]),
+    el("div",{class:"small",style:"text-align:center;margin-top:12px"},["🔒 Accès sécurisé par lien personnel · vos données ne quittent pas votre cabinet"])]);
+  app.appendChild(c);
+}
+
+/* ---- 3. Formulaire sectionné ---- */
+function saveDraft(){patch(function(it,bb){it.answers=Object.assign({},A);it.alerts=mqAlerts(A);if(it.status==="Ouvert"||it.status==="Envoyé"){it.status="Commencé";}});}
+function field(q){
+  var wrap=el("div",{class:"field"});
+  var lbl=el("label",{},[q.q+" ",q.req?el("span",{class:"req"},["*"]):null]);
+  wrap.appendChild(lbl);
+  if(q.t==="bool"){
+    var yes=el("button",{class:"yes"+(A[q.k]==="oui"?" on":""),type:"button"},["Oui"]);
+    var no=el("button",{class:"no"+(A[q.k]==="non"?" on":""),type:"button"},["Non"]);
+    var det=el("div",{class:"det"});
+    function syncDet(){det.innerHTML="";if(q.detail&&A[q.k]==="oui"){var ta=el("textarea",{rows:"2",placeholder:q.detailLabel||"Précisez…"});ta.value=A[q.k+"_d"]||"";ta.addEventListener("input",function(){A[q.k+"_d"]=ta.value;saveDraft();});det.appendChild(ta);}}
+    yes.onclick=function(){A[q.k]="oui";saveDraft();renderForm();};
+    no.onclick=function(){A[q.k]="non";delete A[q.k+"_d"];saveDraft();renderForm();};
+    wrap.appendChild(el("div",{class:"yn"},[yes,no]));syncDet();wrap.appendChild(det);
+  }else if(q.t==="choice"){
+    var row=el("div",{class:"chips"});
+    q.opts.forEach(function(o){row.appendChild(el("button",{type:"button",class:(A[q.k]===o?"on":""),onclick:function(){A[q.k]=o;saveDraft();renderForm();}},[o]));});
+    wrap.appendChild(row);
+  }else{
+    var inp=el("input",{type:q.t==="date"?"date":q.t==="num"?"number":"text"});
+    inp.value=A[q.k]||"";inp.addEventListener("input",function(){A[q.k]=inp.value;saveDraft();});
+    wrap.appendChild(inp);
+  }
+  return wrap;
+}
+function renderForm(){var app=document.getElementById("app");app.innerHTML="";viewForm(app);}
+function viewForm(app){
+  var secs=visibleSections();
+  if(SEC>=secs.length)SEC=secs.length-1;if(SEC<0)SEC=0;
+  var s=secs[SEC];
+  var pct=progressPct();
+  var head=el("div",{},[
+    el("div",{class:"bar"},[el("i",{style:"width:"+pct+"%"})]),
+    el("div",{class:"barlbl"},["Section "+(SEC+1)+" / "+secs.length+" · "+pct+"% complété"])]);
+  var c=el("div",{class:"card"},[el("div",{class:"sec-tag"},["Section "+s.id+" · Étape 2 / 4"]),el("h2",{},[s.t])]);
+  s.qs.forEach(function(q){if(!qVisible(q,A))return;c.appendChild(field(q));});
+  var prevBtn=el("button",{class:"btn",style:"flex:0 0 auto",onclick:function(){if(SEC===0){S.view="consent";render();return;}SEC--;renderForm();window.scrollTo(0,0);}},[SEC===0?"← Consentement":"← Précédent"]);
+  var lastSec=SEC>=secs.length-1;
+  var nextBtn=el("button",{class:"btn primary",style:"flex:1",onclick:function(){
+    // validation des champs requis visibles de la section
+    var miss=s.qs.filter(function(q){return qVisible(q,A)&&q.req&&(!A[q.k]||A[q.k]==="");});
+    if(miss.length){alert("Merci de renseigner : "+miss.map(function(q){return q.q;}).join(", "));return;}
+    saveDraft();
+    if(lastSec){S.view="recap";render();window.scrollTo(0,0);return;}
+    SEC++;renderForm();window.scrollTo(0,0);
+  }},[lastSec?"Vérifier mes réponses →":"Suivant →"]);
+  c.appendChild(el("div",{class:"nav"},[prevBtn,nextBtn]));
+  app.appendChild(el("div",{},[head,c]));
+}
+
+/* ---- 4. Récapitulatif ---- */
+function viewRecap(app){
+  saveDraft();
+  var alerts=mqAlerts(A);
+  var crit=alerts.filter(function(a){return a.level==="critique";});
+  var c=el("div",{class:"card"},[el("div",{class:"sec-tag"},["Étape 3 / 4 · Récapitulatif"]),el("h2",{},["Vérifiez vos réponses"]),
+    el("div",{class:"sub"},["Relisez avant de signer. Vous pourrez revenir en arrière pour corriger."])]);
+  if(alerts.length){
+    c.appendChild(el("div",{style:"margin-bottom:6px;font-weight:700;font-size:13.5px"},["Points d'attention transmis au praticien :"]));
+    alerts.forEach(function(a){var cl=a.level==="critique"?"crit":a.level==="vigilance"?"warn":"info";
+      c.appendChild(el("div",{class:"alertbox "+cl},[el("div",{},[a.level==="critique"?"🚨":a.level==="vigilance"?"⚠️":"ℹ️"]),
+        el("div",{},[el("b",{},[a.title]),a.detail?el("div",{class:"small"},[a.detail]):null])]));});
+  }
+  var rec=el("div",{class:"recap"});
+  visibleSections().forEach(function(s){
+    var rows=[];s.qs.forEach(function(q){if(!qVisible(q,A))return;var v=A[q.k];if(v===undefined||v==="")return;
+      var d=A[q.k+"_d"];rows.push(el("div",{class:"row"},[el("div",{class:"q"},[q.q]),el("div",{class:"a"},[(""+v)+(d?" — "+d:"")])]));});
+    if(rows.length){rec.appendChild(el("div",{class:"rsec"},[s.t]));rows.forEach(function(r){rec.appendChild(r);});}
+  });
+  c.appendChild(rec);
+  c.appendChild(el("div",{class:"nav"},[
+    el("button",{class:"btn",style:"flex:0 0 auto",onclick:function(){S.view="form";SEC=visibleSections().length-1;render();window.scrollTo(0,0);}},["← Corriger"]),
+    el("button",{class:"btn primary",style:"flex:1",onclick:function(){S.view="sign";render();window.scrollTo(0,0);}},["Signer →"])]));
+  app.appendChild(c);
+}
+
+/* ---- 5. Signature électronique ---- */
+function viewSign(app){
+  var c1=el("input",{type:"checkbox"});var c2=el("input",{type:"checkbox"});
+  var canvas=el("canvas",{width:"600",height:"190"});
+  var ph=el("div",{class:"ph"},["✍️ Signez ici avec votre doigt ou la souris"]);
+  var sigEmpty=true;
+  var c=el("div",{class:"card"},[el("div",{class:"sec-tag"},["Étape 4 / 4 · Signature"]),el("h2",{},["Signature électronique"]),
+    el("div",{class:"sub"},["Votre signature vaut engagement sur l'exactitude de vos réponses."]),
+    el("div",{class:"sigwrap"},[canvas,ph]),
+    el("div",{style:"text-align:right;margin:6px 0 4px"},[el("button",{class:"btn ghost",onclick:function(){clearSig();}},["Effacer"])]),
+    el("label",{class:"check"},[c1,el("span",{},["Je certifie que les informations fournies sont exactes et complètes."])]),
+    el("label",{class:"check"},[c2,el("span",{},["J'autorise le cabinet à intégrer ce questionnaire signé à mon dossier médical et à l'utiliser pour la sécurité de mes soins."])]),
+    el("div",{class:"nav"},[
+      el("button",{class:"btn",style:"flex:0 0 auto",onclick:function(){S.view="recap";render();window.scrollTo(0,0);}},["← Retour"]),
+      el("button",{class:"btn primary",style:"flex:1",onclick:function(ev){
+        if(sigEmpty){alert("Merci de signer dans le cadre prévu.");return;}
+        if(!c1.checked||!c2.checked){alert("Merci de cocher les deux cases d'engagement.");return;}
+        var data=canvas.toDataURL("image/png");
+        var nowISO=new Date().toISOString();
+        patch(function(it,bb){
+          it.answers=Object.assign({},A);
+          it.alerts=mqAlerts(A);
+          it.status="Signé";
+          it.completedAt=it.completedAt||nowISO;
+          it.signedAt=nowISO;
+          it.signature={signedAt:nowISO,ip:"capturée côté serveur en prod",ua:navigator.userAgent,session:sessionId,data:data,
+            legal:"Signé électroniquement par "+(it.patientName||"")+" le "+nowISO+". Consentement éclairé recueilli. Document verrouillé et non modifiable."};
+          it.lockedAt=nowISO;
+          bb.log.push({when:nowISO,user:it.patientName,action:"Signature électronique",detail:it.alerts.length+" alerte(s) · session "+sessionId});
+        });
+        var btn=ev.target;btn.disabled=true;btn.textContent="Enregistrement…";
+        pushItemNow().then(function(){S.view="done";render();window.scrollTo(0,0);})
+          .catch(function(e){console.error(e);btn.disabled=false;btn.textContent="✓ Valider et signer";alert("Échec de l'enregistrement en ligne. Vérifiez votre connexion et réessayez.");});
+      }},["✓ Valider et signer"])]),
+    el("div",{class:"small",style:"text-align:center;margin-top:12px"},["🔒 Horodatage, session et signature seront enregistrés. Une fois signé, le questionnaire est verrouillé."])]);
+  app.appendChild(c);
+  // dessin signature
+  var ctx=canvas.getContext("2d");
+  function resize(){var r=canvas.getBoundingClientRect();var prev=sigEmpty?null:canvas.toDataURL();canvas.width=r.width*2;canvas.height=r.height*2;ctx.scale(2,2);ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#16233a";if(prev){var im=new Image();im.onload=function(){ctx.drawImage(im,0,0,r.width,r.height);};im.src=prev;}}
+  setTimeout(resize,30);
+  var drawing=false,lx=0,ly=0;
+  function pos(e){var r=canvas.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return {x:t.clientX-r.left,y:t.clientY-r.top};}
+  function start(e){e.preventDefault();drawing=true;var p=pos(e);lx=p.x;ly=p.y;if(sigEmpty){sigEmpty=false;ph.style.display="none";}}
+  function move(e){if(!drawing)return;e.preventDefault();var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;}
+  function end(){drawing=false;}
+  function clearSig(){ctx.clearRect(0,0,canvas.width,canvas.height);sigEmpty=true;ph.style.display="grid";}
+  canvas.addEventListener("mousedown",start);canvas.addEventListener("mousemove",move);window.addEventListener("mouseup",end);
+  canvas.addEventListener("touchstart",start,{passive:false});canvas.addEventListener("touchmove",move,{passive:false});canvas.addEventListener("touchend",end);
+}
+
+/* ---- 6. Confirmation ---- */
+function viewDone(app){
+  var nAl=(IT.alerts||[]).length;
+  var c=el("div",{class:"card"},[el("div",{class:"ok"},[el("div",{class:"big"},["✓"]),
+    el("h2",{style:"margin:0 0 6px"},["Merci, c'est envoyé !"]),
+    el("div",{class:"sub",style:"margin:0 0 6px"},["Votre questionnaire médical a été signé et transmis à votre cabinet le "+fmtDate((IT.signedAt||"").slice(0,10))+"."])]),
+    el("div",{class:"lockmsg"},["🔒 Document signé et verrouillé. Il est automatiquement intégré à votre dossier patient et sera consulté par votre praticien avant votre rendez-vous."]),
+    nAl?el("div",{class:"small",style:"margin-top:12px"},["Votre praticien a été informé de "+nAl+" point(s) de vigilance médicale que vous avez signalé(s)."]):el("div",{class:"small",style:"margin-top:12px"},["Aucun point de vigilance particulier détecté."]),
+    el("div",{class:"small",style:"text-align:center;margin-top:14px"},["Vous pouvez fermer cette page."])]);
+  app.appendChild(c);
+}
+
+/* ====== Démarrage : chargement en ligne du questionnaire (par token) ====== */
+var BOOTING=true,LOAD_ERR="";
+function boot(){
+  if(!supaReady()){BOOTING=false;render();return;}
+  if(!TOKEN){BOOTING=false;render();return;}
+  render(); // affiche l'état « Chargement… »
+  Promise.all([
+    supaGet("mq_items?token=eq."+encodeURIComponent(TOKEN)+"&select=data&limit=1"),
+    supaGet("mq_meta?id=eq.config&select=data&limit=1").catch(function(){return [];})
+  ]).then(function(res){
+    var rows=res[0]||[];B.items=rows.length?[rows[0].data]:[];
+    var cfg=res[1]&&res[1][0]&&res[1][0].data;if(cfg&&cfg.cabinet)B.cabinet=cfg.cabinet;
+    BOOTING=false;render();
+  }).catch(function(e){console.error(e);LOAD_ERR=String(e.message||e);BOOTING=false;render();});
+}
+boot();
+</script>
+</body>
+</html>
