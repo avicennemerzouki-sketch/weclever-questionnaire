@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mon espace patient</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mon cabinet">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg">
+<style>
+:root{--brand:#1f6feb;--teal:#0fb6a8;--ink:#1b2333;--muted:#6b7689;--line:#e7ebf3;--bg:#f4f6fb;--green:#16a34a;--red:#dc2626;--amber:#d97706}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 80px}
+.hero{background:linear-gradient(135deg,var(--brand),var(--teal));color:#fff;padding:22px 20px calc(22px + env(safe-area-inset-top));border-radius:0 0 22px 22px}
+.hero .top{display:flex;align-items:center;gap:12px}
+.hero .logo{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;flex-shrink:0}
+.hero h1{margin:0;font-size:19px}.hero p{margin:3px 0 0;opacity:.92;font-size:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(20,30,60,.05),0 10px 30px rgba(20,30,60,.05);padding:18px;margin-top:14px}
+.card h2{margin:0 0 4px;font-size:17px}.card .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+.sectitle{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:18px 4px 6px}
+.act{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.12s}
+.act:active{transform:scale(.99)}
+.act .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:21px;flex-shrink:0;background:#eef4ff}
+.act .ic.todo{background:#fff5e8}
+.act .mid{flex:1;min-width:0}
+.act .t{font-weight:700;font-size:15px}.act .s{color:var(--muted);font-size:12.5px;margin-top:2px}
+.act .go{color:var(--brand);font-size:22px}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.pill.todo{background:#fff5e8;color:var(--amber)}.pill.done{background:#e7f7ee;color:var(--green)}.pill.info{background:#eef4ff;color:var(--brand)}.pill.crit{background:#fdecec;color:var(--red)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:13px 16px;font-size:15px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.block{width:100%}
+.btn.danger{background:#fff;border-color:#f3c0c0;color:var(--red)}
+.btn.ghost{border:0;color:var(--brand);background:transparent;padding:8px 0}
+.docbox{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:14px;font-size:14px;line-height:1.55;white-space:pre-wrap;max-height:42vh;overflow:auto}
+.amount{font-size:30px;font-weight:800;color:var(--brand);text-align:center;margin:8px 0}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13.5px;cursor:pointer}
+.check input{width:20px;height:20px;flex-shrink:0;margin-top:1px}
+.sigwrap{border:1.5px dashed #c5cee0;border-radius:12px;background:#fff;position:relative;margin-top:8px}
+.sigwrap canvas{width:100%;height:180px;display:block;touch-action:none;border-radius:12px}
+.sigwrap .ph{position:absolute;inset:0;display:grid;place-items:center;color:#c0c8d8;font-size:14px;pointer-events:none}
+.ok{text-align:center;padding:14px 8px}
+.ok .big{width:70px;height:70px;border-radius:50%;background:#e7f7ee;color:var(--green);display:grid;place-items:center;font-size:36px;margin:0 auto 14px}
+.lockmsg{background:#eef7f0;border:1px solid #cdeccf;color:#15803d;border-radius:11px;padding:12px 14px;font-size:13.5px;font-weight:600}
+.cab-row{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f3f9;font-size:14px}
+.cab-row:last-child{border:0}.cab-row .k{color:var(--muted);width:90px;flex-shrink:0}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:22px;line-height:1.6}
+.err{text-align:center;color:var(--muted);padding:24px 10px}
+.install{position:fixed;left:16px;right:16px;bottom:16px;max-width:648px;margin:0 auto;background:var(--ink);color:#fff;border-radius:14px;padding:12px 14px;display:none;align-items:center;gap:10px;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:50}
+.install button{margin-left:auto}
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="top">
+    <div class="logo"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3c-2.2 0-3 1.2-5 1.2C5.2 4.2 4 3.8 4 6.5c0 3 .6 5.2 1.6 8.2C6.4 18 7.2 21 8.6 21c1.3 0 1.5-2.5 3.4-2.5S14 21 15.4 21c1.4 0 2.2-3 3-6.3C19.4 11.7 20 9.5 20 6.5c0-2.7-1.2-2.3-3-2.3-2 0-2.8-1.2-5-1.2Z" fill="#fff"/></svg></div>
+    <div><h1 id="cabname">Mon espace patient</h1><p id="hellopat">Sécurisé &amp; confidentiel</p></div>
+  </div>
+</div>
+<div class="wrap"><div id="app"></div>
+  <div class="foot">🔒 Vos données de santé sont confidentielles. Espace fourni par votre cabinet dentaire.<br>Propulsé par Weclever · Conforme RGPD</div>
+</div>
+<div class="install" id="installBar"><span>📲 Installer l'app sur votre téléphone</span><button class="btn primary" id="installBtn" style="padding:8px 14px">Installer</button></div>
+<script>
+"use strict";
+var SUPA={url:"https://kajecbhiylgmmczukcuv.supabase.co",key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthamVjYmhpeWxnbW1jenVrY3V2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2OTc5NDksImV4cCI6MjA5NzI3Mzk0OX0.b8YSDuoBhwDMsqSW3_vedpZoFN1v5modrHb8nOwba3o"};
+function supaReady(){return /^https?:\/\//.test(SUPA.url)&&SUPA.key&&SUPA.url.indexOf("VOTRE")<0;}
+function H(){return {apikey:SUPA.key,Authorization:"Bearer "+SUPA.key,"Content-Type":"application/json"};}
+function supaGet(p){return fetch(SUPA.url.replace(/\/$/,"")+"/rest/v1/"+p,{headers:H()}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(r.status+" "+t);});return r.json();});}
+function supaUpsert(table,rows,oc){return fetch(SUPA.url.replace(/\/$/,"")+"/rest/v1/"+table+"?on_conflict="+oc,{method:"POST",headers:Object.assign(H(),{Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows)}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(r.status+" "+t);});return true;});}
+function el(t,a,k){var n=document.createElement(t);a=a||{};for(var key in a){if(key==="class")n.className=a[key];else if(key==="html")n.innerHTML=a[key];else if(key.slice(0,2)==="on"&&typeof a[key]==="function")n.addEventListener(key.slice(2),a[key]);else if(a[key]!=null&&a[key]!==false)n.setAttribute(key,a[key]);}
+  k=k==null?[]:(Array.isArray(k)?k:[k]);k.forEach(function(c){if(c==null||c===false)return;n.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(c):c);});return n;}
+function fmtDate(iso){if(!iso)return "—";return new Date((iso+"").slice(0,10)+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+var DOCTYPES={devis:"Devis",consent:"Consentement",document:"Document",questionnaire:"Questionnaire médical"};
+var ICONS={devis:"💶",consent:"📝",document:"📎",questionnaire:"🩺"};
+var TOKEN=new URLSearchParams(location.search).get("t");
+var ACCESS=null,PID=null,PNAME="",CAB="votre cabinet dentaire",DOCS=[],BOOTING=true,ERR="";
+var S={view:"dash",doc:null};
+var sessionId="sess_"+Math.random().toString(36).slice(2,10);
+
+function docStatus(d){if(d.signedAt)return "Signé";if(d.refusedAt)return "Refusé";if(d.expiresAt&&d.expiresAt<todayISO()&&!d.signedAt)return "Expiré";return d.status||"Envoyé";}
+function pending(){return DOCS.filter(function(d){return d.requiresSignature&&["Signé","Refusé","Expiré","Annulé"].indexOf(docStatus(d))<0;});}
+function writeDoc(d){var i=-1;for(var j=0;j<DOCS.length;j++)if(DOCS[j].id===d.id)i=j;if(i<0)DOCS.push(d);else DOCS[i]=d;
+  return supaUpsert("wc_portal",[{id:"doc_"+d.id,kind:"doc",ref:PID,data:d}],"id");}
+function docEvent(d,type,ns){d.events=d.events||[];d.events.push({at:new Date().toISOString(),actor:"patient",type:type,old:d.status,ns:ns||d.status});if(ns)d.status=ns;}
+
+/* ====== rendu ====== */
+function render(){var app=document.getElementById("app");app.innerHTML="";
+  document.getElementById("cabname").textContent=CAB!=="votre cabinet dentaire"?CAB:"Mon espace patient";
+  if(!supaReady())return app.appendChild(errCard("Service non configuré","Contactez votre cabinet."));
+  if(!TOKEN)return app.appendChild(errCard("Lien invalide","Ce lien ne contient pas d'accès. Demandez un nouveau lien à votre cabinet."));
+  if(BOOTING)return app.appendChild(loadCard());
+  if(ERR)return app.appendChild(errCard("Connexion impossible","Réessayez dans un instant ou contactez votre cabinet."));
+  if(!ACCESS)return app.appendChild(errCard("Accès introuvable","Ce lien n'est plus valide. Contactez votre cabinet pour en recevoir un nouveau."));
+  document.getElementById("hellopat").textContent="Bonjour "+(PNAME||"")+" 👋";
+  if(S.view==="dash")return viewDash(app);
+  if(S.view==="doc")return viewDoc(app,S.doc);
+  if(S.view==="sign")return viewSign(app,S.doc);
+  if(S.view==="done")return viewDone(app,S.doc);
+}
+function errCard(t,m){return el("div",{class:"card"},[el("div",{class:"err"},[el("div",{style:"font-size:38px;margin-bottom:8px"},["⚠️"]),el("h2",{style:"margin:0 0 6px"},[t]),el("div",{class:"sub",style:"margin:0"},[m])])]);}
+function loadCard(){return el("div",{class:"card"},[el("div",{class:"err"},[el("div",{style:"font-size:32px"},["⏳"]),el("div",{style:"margin-top:8px"},["Chargement de votre espace…"])])]);}
+
+function viewDash(app){
+  var todo=pending();
+  if(todo.length){app.appendChild(el("div",{class:"sectitle"},["Actions à faire ("+todo.length+")"]));
+    todo.forEach(function(d){app.appendChild(actionCard(d,true));});}
+  else app.appendChild(el("div",{class:"card"},[el("div",{class:"ok"},[el("div",{class:"big"},["✓"]),el("div",{style:"font-weight:700"},["Vous êtes à jour"]),el("div",{class:"sub",style:"margin:4px 0 0"},["Aucune action en attente."])])]));
+  var others=DOCS.filter(function(d){return todo.indexOf(d)<0;});
+  if(others.length){app.appendChild(el("div",{class:"sectitle"},["Vos documents"]));others.forEach(function(d){app.appendChild(actionCard(d,false));});}
+  // infos cabinet
+  app.appendChild(el("div",{class:"sectitle"},["Mon cabinet"]));
+  app.appendChild(el("div",{class:"card"},[el("h2",{},[CAB]),
+    el("div",{class:"cab-row"},[el("span",{class:"k"},["Espace"]),el("span",{},["Documents, devis, consentements et questionnaire médical en ligne."])]),
+    el("div",{class:"cab-row"},[el("span",{class:"k"},["Confidentialité"]),el("span",{},["Vos réponses et signatures sont strictement réservées à votre équipe soignante."])])]));
+}
+function actionCard(d,todo){var st=docStatus(d);
+  return el("div",{class:"act",onclick:function(){openDoc(d);}},[
+    el("div",{class:"ic"+(todo?" todo":"")},[ICONS[d.docType]||"📄"]),
+    el("div",{class:"mid"},[el("div",{class:"t"},[d.title]),el("div",{class:"s"},[DOCTYPES[d.docType]+" · "+(d.signedAt?"signé le "+fmtDate(d.signedAt):"reçu le "+fmtDate(d.sentAt))])]),
+    todo?el("span",{class:"pill todo"},["À "+(d.docType==="document"?"voir":"signer")]):el("span",{class:"pill "+(st==="Signé"?"done":st==="Refusé"||st==="Expiré"?"crit":"info")},[st]),
+    el("div",{class:"go"},["›"])]);
+}
+function markOpened(d){if(!d.openedAt){d.openedAt=new Date().toISOString();docEvent(d,"Ouverture",d.status==="Envoyé"?"Ouvert":d.status);writeDoc(d);}}
+function openDoc(d){markOpened(d);
+  if(d.docType==="questionnaire"){var base=location.pathname.replace(/[^/]*$/,"");location.href=base+"questionnaire.html?t="+(d.refId||"");return;}
+  S.doc=d;S.view="doc";render();window.scrollTo(0,0);}
+
+function viewDoc(app,d){var st=docStatus(d);
+  var c=el("div",{class:"card"});
+  c.appendChild(el("button",{class:"btn ghost",onclick:function(){S.view="dash";render();}},["‹ Retour"]));
+  c.appendChild(el("h2",{},[d.title]));
+  c.appendChild(el("div",{class:"sub"},[DOCTYPES[d.docType]+" · reçu le "+fmtDate(d.sentAt)]));
+  if(d.docType==="devis"){c.appendChild(el("div",{class:"amount"},[(d.amount||0).toLocaleString("fr-FR")+" €"]));
+    c.appendChild(el("div",{class:"docbox"},["Devis de soins proposé par votre cabinet.\nMontant total : "+(d.amount||0).toLocaleString("fr-FR")+" €.\n\nEn signant, vous acceptez ce devis. Vous pouvez aussi le refuser ou poser une question à votre cabinet."]));}
+  else if(d.docType==="consent"){c.appendChild(el("div",{class:"docbox"},[d.content||"Consentement."]));}
+  else if(d.docType==="document"){
+    if(d.file&&(d.file.type||"").indexOf("image")===0)c.appendChild(el("img",{src:d.file.dataUrl,style:"max-width:100%;border-radius:10px;margin-top:8px"}));
+    c.appendChild(el("a",{class:"btn block",style:"margin-top:10px",href:d.file?d.file.dataUrl:"#",download:d.file?d.file.name:"document",target:"_blank"},["⬇️ Télécharger le document"]));
+  }
+  if(st==="Signé"){c.appendChild(el("div",{class:"lockmsg",style:"margin-top:12px"},["🔒 Signé le "+fmtDate(d.signedAt)+" · transmis à votre cabinet."]));}
+  else if(st==="Refusé"){c.appendChild(el("div",{class:"lockmsg",style:"margin-top:12px;background:#fdecec;border-color:#f6c9c9;color:#c42727"},["❌ Vous avez refusé ce document."]));}
+  else if(d.requiresSignature){
+    c.appendChild(el("button",{class:"btn primary block",style:"margin-top:14px",onclick:function(){S.view="sign";render();window.scrollTo(0,0);}},["✍️ Lire et signer"]));
+    if(d.docType==="devis")c.appendChild(el("button",{class:"btn danger block",style:"margin-top:8px",onclick:function(){refuseDevis(d);}},["Refuser ce devis"]));
+  }
+  app.appendChild(c);
+}
+function refuseDevis(d){var reason=prompt("Motif du refus (facultatif) :")||"";d.refusedAt=new Date().toISOString();d.refuseReason=reason;docEvent(d,"Refus","Refusé");writeDoc(d).then(function(){S.view="dash";render();});}
+
+function viewSign(app,d){
+  var c1=el("input",{type:"checkbox"});var c2=el("input",{type:"checkbox"});
+  var canvas=el("canvas",{width:"600",height:"180"});var ph=el("div",{class:"ph"},["✍️ Signez ici"]);var sigEmpty=true;
+  var legal=d.docType==="devis"?"En signant, j'accepte le devis et son montant.":"J'ai lu et je consens à l'acte décrit ci-dessus.";
+  var c=el("div",{class:"card"},[
+    el("button",{class:"btn ghost",onclick:function(){S.view="doc";render();}},["‹ Retour"]),
+    el("h2",{},["Signature"]),el("div",{class:"sub"},[d.title]),
+    el("div",{class:"docbox",style:"max-height:30vh"},[d.docType==="devis"?("Montant : "+(d.amount||0).toLocaleString("fr-FR")+" €"):(d.content||"")]),
+    el("div",{class:"sigwrap"},[canvas,ph]),
+    el("div",{style:"text-align:right;margin:6px 0 2px"},[el("button",{class:"btn ghost",onclick:function(){clearSig();}},["Effacer"])]),
+    el("label",{class:"check"},[c1,el("span",{},[legal])]),
+    el("label",{class:"check"},[c2,el("span",{},["Je reconnais que ma signature électronique a valeur d'engagement."])]),
+    el("button",{class:"btn primary block",style:"margin-top:14px",onclick:function(ev){
+      if(sigEmpty){alert("Merci de signer.");return;}
+      if(!c1.checked||!c2.checked){alert("Merci de cocher les deux cases.");return;}
+      var now=new Date().toISOString();
+      d.signedAt=now;d.status="Signé";
+      d.signature={signedAt:now,ip:"capturée côté serveur en prod",ua:navigator.userAgent,session:sessionId,data:canvas.toDataURL("image/png"),legal:legal+" Signé électroniquement par "+(PNAME||"")+" le "+now+". Document verrouillé."};
+      docEvent(d,"Signature","Signé");
+      var btn=ev.target;btn.disabled=true;btn.textContent="Enregistrement…";
+      writeDoc(d).then(function(){S.view="done";render();window.scrollTo(0,0);}).catch(function(){btn.disabled=false;btn.textContent="✓ Valider et signer";alert("Échec de l'enregistrement. Réessayez.");});
+    }},["✓ Valider et signer"])]);
+  app.appendChild(c);
+  var ctx=canvas.getContext("2d");
+  function resize(){var r=canvas.getBoundingClientRect();canvas.width=r.width*2;canvas.height=r.height*2;ctx.scale(2,2);ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#16233a";}
+  setTimeout(resize,30);
+  var drawing=false,lx=0,ly=0;
+  function pos(e){var r=canvas.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return {x:t.clientX-r.left,y:t.clientY-r.top};}
+  function start(e){e.preventDefault();drawing=true;var p=pos(e);lx=p.x;ly=p.y;if(sigEmpty){sigEmpty=false;ph.style.display="none";}}
+  function move(e){if(!drawing)return;e.preventDefault();var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;}
+  function end(){drawing=false;}
+  function clearSig(){ctx.clearRect(0,0,canvas.width,canvas.height);sigEmpty=true;ph.style.display="grid";}
+  canvas.addEventListener("mousedown",start);canvas.addEventListener("mousemove",move);window.addEventListener("mouseup",end);
+  canvas.addEventListener("touchstart",start,{passive:false});canvas.addEventListener("touchmove",move,{passive:false});canvas.addEventListener("touchend",end);
+}
+function viewDone(app,d){
+  app.appendChild(el("div",{class:"card"},[el("div",{class:"ok"},[el("div",{class:"big"},["✓"]),el("h2",{style:"margin:0 0 6px"},["Merci, c'est signé !"]),
+    el("div",{class:"sub",style:"margin:0 0 8px"},["« "+d.title+" » a été signé et transmis à votre cabinet le "+fmtDate(d.signedAt)+"."])]),
+    el("div",{class:"lockmsg"},["🔒 Document verrouillé et intégré à votre dossier. Votre praticien en est informé."]),
+    el("button",{class:"btn primary block",style:"margin-top:14px",onclick:function(){S.view="dash";render();window.scrollTo(0,0);}},["Retour à mon espace"])]));
+}
+
+/* ====== boot ====== */
+function boot(){
+  if(!supaReady()||!TOKEN){BOOTING=false;render();return;}
+  render();
+  Promise.all([
+    supaGet("wc_portal?kind=eq.access&select=data"),
+    supaGet("mq_meta?id=eq.config&select=data&limit=1").catch(function(){return [];})
+  ]).then(function(res){
+    var accs=res[0]||[];var found=null;
+    for(var i=0;i<accs.length;i++){if(accs[i].data&&accs[i].data.token===TOKEN){found=accs[i].data;break;}}
+    var cfg=res[1]&&res[1][0]&&res[1][0].data;if(cfg&&cfg.cabinet)CAB=cfg.cabinet;
+    if(!found){BOOTING=false;render();return;}
+    ACCESS=found;PID=found.patientId;PNAME=found.patientName||"";
+    // marquer l'accès actif
+    found.status="Actif";found.lastSeenAt=new Date().toISOString();
+    supaUpsert("wc_portal",[{id:"access_"+found.id,kind:"access",ref:PID,data:found}],"id");
+    return supaGet("wc_portal?kind=eq.doc&ref=eq."+encodeURIComponent(PID)+"&select=data").then(function(rows){
+      DOCS=(rows||[]).map(function(r){return r.data;}).sort(function(a,b){return (b.sentAt||"").localeCompare(a.sentAt||"");});
+      BOOTING=false;render();
+    });
+  }).catch(function(e){console.error(e);ERR=String(e.message||e);BOOTING=false;render();});
+}
+boot();
+
+/* ====== PWA ====== */
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+var deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;document.getElementById("installBar").style.display="flex";});
+document.getElementById("installBtn").addEventListener("click",function(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){document.getElementById("installBar").style.display="none";deferredPrompt=null;});}});
+</script>
+</body>
+</html>
