@@ -426,6 +426,7 @@ const CAPS={
   viewChat:["administrateur","directeur","responsable","praticien","assistante","secretaire","comptable","qualite"],
   viewLab:["administrateur","directeur","responsable","praticien","assistante","secretaire"],
   sendLab:["administrateur","directeur","responsable","praticien","assistante"],
+  viewPortal:["administrateur","directeur","responsable","praticien","assistante","secretaire"],
   settings:["administrateur","directeur"]
 };
 const can = cap => CAPS[cap] ? CAPS[cap].includes(state.role) : true;
@@ -707,6 +708,7 @@ const NAV=[
     {id:"medical",ic:"📝",label:"Questionnaires",cap:"viewMedical"},
     {id:"chat",ic:"💬",label:"Messagerie",cap:"viewChat"},
     {id:"lab",ic:"🦷",label:"Fiches labo",cap:"viewLab"},
+    {id:"portal",ic:"🌐",label:"Portail patient",cap:"viewPortal"},
     {id:"stats",ic:"📊",label:"Statistiques",cap:"viewStats"},
   ]},
   {g:"Système",items:[{id:"settings",ic:"⚙︎",label:"Paramètres & droits"}]}
@@ -731,6 +733,7 @@ function render(){
     else if(state.view==="medical")view=can("viewMedical")?ViewMedical():NoAccess();
     else if(state.view==="chat")view=can("viewChat")?ViewChat():NoAccess();
     else if(state.view==="lab")view=can("viewLab")?ViewLab():NoAccess();
+    else if(state.view==="portal")view=can("viewPortal")?ViewPortal():NoAccess();
     else if(state.view==="stats")view=can("viewStats")?ViewStats():NoAccess();
     else if(state.view==="settings")view=ViewSettings();
   }catch(e){view=el("div",{class:"notice"},"Erreur d'affichage : "+e.message);console.error(e);}
@@ -1695,6 +1698,7 @@ function TracePatient(){
   if(can("viewMedical")){const mqb=patientMedicalBlock(pid);if(mqb)body.appendChild(mqb);}
   if(can("viewChat")){const ccb=patientChatBlock(pid);if(ccb)body.appendChild(ccb);}
   if(can("viewLab")){const lcb=patientLabBlock(pid);if(lcb)body.appendChild(lcb);}
+  if(can("viewPortal")){const ppb=patientPortalBlock(pid);if(ppb)body.appendChild(ppb);}
   // Dispositifs médicaux / lots tracés dans Weclever (source de traçabilité réelle)
   if(dm.length){body.appendChild(el("div",{class:"notif-grp"},"Dispositifs médicaux & lots (Weclever) · "+dm.length));
     const t=el("table",{},el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Dispositif"),el("th",{},"Référence / lot"),el("th",{},"Observation"))));const tb=el("tbody",{});
@@ -4101,6 +4105,185 @@ function authSetSession(u){try{localStorage.setItem(SESS_LS,JSON.stringify({uid:
 function authLogout(){try{localStorage.removeItem(SESS_LS);}catch(e){}state.authed=false;state.authUid=null;state.notifOpen=false;render();}
 function authRestore(){authLoadLS();try{const s=JSON.parse(localStorage.getItem(SESS_LS));if(s&&s.uid){const u=AUTHDB.users.find(x=>x.id===s.uid);if(u){state.authed=true;state.authUid=u.id;state.userName=u.name;state.role=u.role;state.site=u.site;}}}catch(e){}}
 function authMe(){return AUTHDB.users.find(u=>u.id===state.authUid)||null;}
+
+/* ======================================================================
+   PORTAIL PATIENT  (espace patient connecté : devis, consentements, documents, signature)
+   - Stockage réel : table Supabase wc_portal (accès + documents + modèles + événements) + repli localStorage
+   - Page patient : portal.html (PWA installable). Réutilise signature, PDF, dossier patient.
+   ====================================================================== */
+const PORTAL_LS="wc_portal_v1";
+let PORTAL={tpls:[],access:[],docs:[],loaded:false,online:false,missing:false,_seeded:false};
+let portalPoll=null;
+const PORTAL_SQL="create table if not exists wc_portal (id text primary key, kind text, ref text, data jsonb not null, updated_at timestamptz default now());\ncreate index if not exists wc_portal_ref on wc_portal(ref);\nalter table wc_portal enable row level security;\ncreate policy wc_portal_all on wc_portal for all using (true) with check (true);";
+function portalLoadLS(){try{const o=JSON.parse(localStorage.getItem(PORTAL_LS));if(o){PORTAL.tpls=o.tpls||[];PORTAL.access=o.access||[];PORTAL.docs=o.docs||[];PORTAL._seeded=o._seeded;}}catch(e){}}
+function portalSaveLS(){try{localStorage.setItem(PORTAL_LS,JSON.stringify({tpls:PORTAL.tpls,access:PORTAL.access,docs:PORTAL.docs,_seeded:PORTAL._seeded}));}catch(e){}}
+function portalRow(kind,id,ref,data){return {id:kind+"_"+id,kind,ref,data};}
+async function portalCloudPush(rows){if(!PORTAL.online)return;try{await supaUpsert("wc_portal",rows,"id");}catch(e){console.error(e);}}
+function portalPersist(changed){portalSaveLS();if(PORTAL.online&&changed&&changed.length)portalCloudPush(changed);}
+async function portalBoot(force){if(PORTAL.loaded&&!force)return;PORTAL.loaded=true;portalLoadLS();portalSeed();
+  if(supaReady()){try{const rows=await supaGet("wc_portal?select=kind,ref,data");PORTAL.online=true;PORTAL.missing=false;
+    const tp=rows.filter(r=>r.kind==="tpl").map(r=>r.data),ac=rows.filter(r=>r.kind==="access").map(r=>r.data),dc=rows.filter(r=>r.kind==="doc").map(r=>r.data);
+    if(!tp.length&&!ac.length&&!dc.length&&(PORTAL.tpls.length||PORTAL.docs.length)){await portalCloudPush(PORTAL.tpls.map(t=>portalRow("tpl",t.id,t.id,t)).concat(PORTAL.access.map(a=>portalRow("access",a.id,a.patientId,a))).concat(PORTAL.docs.map(d=>portalRow("doc",d.id,d.patientId,d))));}
+    else{PORTAL.tpls=tp.length?tp:PORTAL.tpls;PORTAL.access=ac;PORTAL.docs=dc;portalSaveLS();}
+    if(state.view==="portal"||state.tab.trace==="patient")render();portalStartPoll();
+  }catch(e){const s=String(e.message||e);if(/wc_portal|PGRST205|schema cache/i.test(s))PORTAL.missing=true;PORTAL.online=false;}}}
+function portalStartPoll(){if(portalPoll||!PORTAL.online)return;portalPoll=setInterval(async()=>{
+  if(document.querySelector(".modal-backdrop"))return;if(state.view!=="portal"&&state.tab.trace!=="patient")return;
+  try{const rows=await supaGet("wc_portal?select=kind,ref,data");const ac=rows.filter(r=>r.kind==="access").map(r=>r.data),dc=rows.filter(r=>r.kind==="doc").map(r=>r.data);
+    if(JSON.stringify(dc)!==JSON.stringify(PORTAL.docs)||JSON.stringify(ac)!==JSON.stringify(PORTAL.access)){PORTAL.access=ac;PORTAL.docs=dc;portalSaveLS();render();}}catch(e){}},7000);}
+/* ---- référentiels ---- */
+const CONSENT_CATS=["implantologie","chirurgie","extraction","orthodontie","blanchiment","endodontie","prothèse","anesthésie","imagerie","parodontal","autre"];
+const PORTAL_DOCTYPES={devis:"Devis",consent:"Consentement",document:"Document",questionnaire:"Questionnaire médical"};
+const PORTAL_STATUS_CLS={"Brouillon":"gray","Envoyé":"info","Ouvert":"info","Consulté":"info","Complété":"teal","Signé":"ok","Refusé":"crit","Expiré":"crit","Annulé":"gray","Archivé":"gray"};
+function portalToken(){return "pt_"+Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,8);}
+function portalAccess(pid){return PORTAL.access.find(a=>a.patientId===pid);}
+function portalEnsureAccess(pid){let a=portalAccess(pid);if(!a){const p=(DB.patients||[]).find(x=>x.id===pid)||{};a={id:uid("pa"),patientId:pid,patientName:p.name||patName(pid),token:portalToken(),status:"Non invité",createdAt:new Date().toISOString()};PORTAL.access.push(a);portalPersist([portalRow("access",a.id,pid,a)]);}return a;}
+function portalLink(a){const base=(wqRaw()&&wqRaw().publicUrl?wqRaw().publicUrl.replace(/[^/]*$/,""):"")||"";const rel="portal.html?t="+a.token;return base?base+rel:rel;}
+function portalAbsLink(a){const l=portalLink(a);return /^https?:/i.test(l)?l:(location.origin+location.pathname.replace(/[^/]*$/,"")+l);}
+function portalDocsFor(pid){return PORTAL.docs.filter(d=>d.patientId===pid).sort((a,b)=>(b.sentAt||b.createdAt||"").localeCompare(a.sentAt||a.createdAt||""));}
+function portalStatusOf(d){if(d.signedAt)return "Signé";if(d.refusedAt)return "Refusé";if(d.expiresAt&&d.expiresAt<todayISO&&!d.signedAt&&d.status!=="Signé")return "Expiré";return d.status||"Brouillon";}
+function portalEvent(d,type,ns){d.events=d.events||[];d.events.push({at:new Date().toISOString(),actor:state.userName||"cabinet",type,old:d.status,ns:ns||d.status});if(ns)d.status=ns;}
+function portalSaveDoc(d,note){const i=PORTAL.docs.findIndex(x=>x.id===d.id);if(i<0)PORTAL.docs.push(d);else PORTAL.docs[i]=d;portalPersist([portalRow("doc",d.id,d.patientId,d)]);if(note)toast(note);}
+function portalNewDoc(pid,docType,o){const p=(DB.patients||[]).find(x=>x.id===pid)||{};const exp=new Date(today);exp.setDate(exp.getDate()+30);
+  const d=Object.assign({id:uid("pd"),patientId:pid,patientName:p.name||patName(pid),docType,title:PORTAL_DOCTYPES[docType],status:"Envoyé",requiresSignature:docType!=="document",sentBy:state.userName,sentAt:new Date().toISOString(),expiresAt:exp.toISOString().slice(0,10),events:[],version:1,createdAt:new Date().toISOString()},o);
+  portalEvent(d,"Création",null);d.status="Envoyé";portalEvent(d,"Envoi","Envoyé");
+  const a=portalEnsureAccess(pid);if(a.status==="Non invité"){a.status="Invitation envoyée";a.invitedAt=new Date().toISOString();portalPersist([portalRow("access",a.id,pid,a)]);}
+  PORTAL.docs.push(d);portalPersist([portalRow("doc",d.id,pid,d)]);return d;}
+/* ---- envois ---- */
+function portalSendConsent(pid){const tpls=PORTAL.tpls.filter(t=>t.active!==false);if(!tpls.length){toast("Aucun modèle de consentement","warn");return;}
+  const sel=el("select",{},...tpls.map(t=>el("option",{value:t.id},t.title+" ("+t.category+")")));
+  modalOpen("Envoyer un consentement",el("div",{},el("div",{class:"field"},el("label",{},"Modèle de consentement"),sel),el("div",{class:"hint"},"Le patient lira et signera ce consentement depuis son portail. Le PDF signé sera intégré au dossier.")),
+    [{label:"Annuler",fn:modalClose},{label:"Envoyer",primary:true,fn:()=>{const t=PORTAL.tpls.find(x=>x.id===sel.value);const d=portalNewDoc(pid,"consent",{title:t.title,refId:t.id,category:t.category,content:t.content,requiresSignature:true});modalClose();render();toast("Consentement envoyé au portail patient");openPortalDocDetail(d.id);}}]);}
+function portalSendDevis(pid){const p=(DB.patients||[]).find(x=>x.id===pid)||{};
+  const mine=(DB.devisRows||[]).filter(r=>wcNorm(r.patient||r.name||"")===wcNorm(p.name||""));
+  const amount=el("input",{type:"number",placeholder:"Montant €",value:mine[0]?(mine[0].amount||""):""});
+  const title=el("input",{value:mine[0]?("Devis "+(mine[0].created||"")):"Devis de soins"});
+  modalOpen("Envoyer un devis à signer",el("div",{},el("div",{class:"field"},el("label",{},"Intitulé"),title),el("div",{class:"field"},el("label",{},"Montant (€)"),amount),el("div",{class:"hint"},mine.length?(mine.length+" devis trouvé(s) pour ce patient dans Weclever."):"Aucun devis importé pour ce patient — saisissez le montant.")),
+    [{label:"Annuler",fn:modalClose},{label:"Envoyer",primary:true,fn:()=>{const d=portalNewDoc(pid,"devis",{title:title.value||"Devis",amount:parseFloat(amount.value)||0,requiresSignature:true});modalClose();render();toast("Devis envoyé au portail patient");openPortalDocDetail(d.id);}}]);}
+function portalSendDocument(pid){const f={};const fileIn=el("input",{type:"file",accept:"application/pdf,image/*"});const title=el("input",{placeholder:"Titre du document"});
+  modalOpen("Envoyer un document",el("div",{},el("div",{class:"field"},el("label",{},"Titre"),title),el("div",{class:"field"},el("label",{},"Fichier (PDF, image)"),fileIn),el("div",{class:"hint"},"Le patient pourra le consulter et le télécharger depuis son portail.")),
+    [{label:"Annuler",fn:modalClose},{label:"Envoyer",primary:true,fn:()=>{const files=fileIn.files;if(!files||!files.length){toast("Choisissez un fichier","warn");return;}
+      labFiles(files,atts=>{const a=atts[0];const d=portalNewDoc(pid,"document",{title:title.value||a.name,requiresSignature:false,file:a});portalSaveDoc(d);modalClose();render();toast("Document envoyé au portail patient");});}}]);}
+function portalSendQuestionnaire(pid){const p=(DB.patients||[]).find(x=>x.id===pid)||{};
+  if(typeof wqStore==="function"){const b=wqStore();const exp=new Date(today);exp.setDate(exp.getDate()+(b.expireDays||30));
+    const it={id:uid("mq"),token:wqToken(),patientId:pid,patientName:p.name,patientBirth:"",practitioner:state.practitioner!=="all"?state.practitioner:(DB.practitioners[0]||{}).id,status:"Envoyé",version:1,answers:{},alerts:[],sentVia:"Portail",sentBy:state.userName,sentAt:new Date().toISOString(),expiresAt:exp.toISOString().slice(0,10),createdAt:new Date().toISOString()};
+    b.items.push(it);wqLog(b,"Envoi questionnaire (portail)",it.patientName);wqSaveRaw(b);
+    const d=portalNewDoc(pid,"questionnaire",{title:"Questionnaire médical",refId:it.token,requiresSignature:true});
+    render();toast("Questionnaire médical envoyé au portail patient");}
+  else toast("Module questionnaire indisponible","warn");}
+function portalInvite(pid){const a=portalEnsureAccess(pid);const p=(DB.patients||[]).find(x=>x.id===pid)||{};const url=portalAbsLink(a);
+  const subj="Votre espace patient — "+((wqRaw()&&wqRaw().cabinet)||"votre cabinet dentaire");
+  const body="Bonjour "+(p.name||"")+",\n\nVotre cabinet dentaire met à votre disposition un espace patient sécurisé où vous pouvez consulter et signer vos documents (questionnaire médical, devis, consentements) :\n"+url+"\n\nCe lien est personnel. Vos données sont confidentielles.\n\nCordialement,\n"+((wqRaw()&&wqRaw().cabinet)||"Votre cabinet");
+  a.status="Invitation envoyée";a.invitedAt=new Date().toISOString();a.invitedBy=state.userName;portalPersist([portalRow("access",a.id,pid,a)]);
+  window.location.href="mailto:?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);
+  render();toast("Invitation préparée — lien du portail patient");}
+/* ---- PDF signé ---- */
+function portalSignedPDF(id){const d=PORTAL.docs.find(x=>x.id===id);if(!d)return;const cab=(wqRaw()&&wqRaw().cabinet)||"Cabinet dentaire";
+  let html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+d.title+'</title><style>body{font-family:-apple-system,Segoe UI,Arial,sans-serif;margin:26px;color:#111;font-size:13px}h1{font-size:18px;margin:0 0 2px}.muted{color:#666}.sec{font-weight:700;color:#1f6feb;margin:14px 0 4px}.sign{margin-top:18px;border-top:1px dashed #999;padding-top:10px}.box{border:1px solid #e7ebf3;border-radius:8px;padding:12px;margin:10px 0;white-space:pre-wrap}@media print{.np{display:none}}</style></head><body>'+
+    '<div style="display:flex;justify-content:space-between;border-bottom:2px solid #1f6feb;padding-bottom:8px"><div><h1>'+cab+'</h1><div class="muted">'+PORTAL_DOCTYPES[d.docType]+'</div></div><div style="text-align:right">'+qrSVG("WC-PORTAL:"+d.id,3)+'<div class="muted" style="font-size:10px;text-align:center">'+d.id+'</div></div></div>'+
+    '<div class="sec">Patient</div><b>'+(d.patientName||"")+'</b>'+
+    '<div class="sec">'+d.title+'</div>'+(d.docType==="devis"?('<div class="box">Montant : <b>'+(d.amount||0).toLocaleString("fr-FR")+' €</b></div>'):'')+(d.content?'<div class="box">'+d.content.replace(/</g,"&lt;").replace(/\n/g,"<br>")+'</div>':'');
+  if(d.signature){html+='<div class="sign"><div class="sec">Signature électronique</div><div>'+(d.signature.legal||"")+'</div>'+(d.signature.data?'<img src="'+d.signature.data+'" style="max-height:80px">':'')+'<div class="muted">Signé le '+fmtDateTime(d.signature.signedAt)+' · IP '+(d.signature.ip||"-")+' · session '+(d.signature.session||"-")+'</div></div>';}
+  html+='<div class="muted" style="margin-top:14px;font-size:10.5px">🔒 Document confidentiel — données de santé. Conforme RGPD.</div><button class="np" onclick="window.print()" style="margin-top:12px;padding:8px 14px;border:0;border-radius:8px;background:#1f6feb;color:#fff;font-weight:600;cursor:pointer">🖨️ Imprimer / PDF</button></body></html>';
+  const w=window.open("","_blank","width=720,height=900");if(!w){toast("Autorisez les pop-ups","warn");return;}w.document.write(html);w.document.close();}
+/* ---- seed ---- */
+function portalSeed(){if(PORTAL._seeded||PORTAL.tpls.length)return;PORTAL._seeded=true;
+  PORTAL.tpls=[
+   {id:"ct1",title:"Consentement éclairé — Implantologie",category:"implantologie",requiresSignature:true,active:true,content:"Je soussigné(e) reconnais avoir reçu une information claire sur la pose d'implant(s) dentaire(s) : objectifs, déroulement, alternatives, risques (échec d'ostéointégration, infection, lésion nerveuse, sinusite), suites opératoires et soins post-opératoires. J'ai pu poser mes questions et j'accepte la réalisation de cet acte."},
+   {id:"ct2",title:"Consentement — Extraction dentaire",category:"extraction",requiresSignature:true,active:true,content:"Je reconnais avoir été informé(e) de la nécessité de l'extraction, des alternatives possibles, des risques (saignement, douleur, infection, alvéolite, lésion nerveuse) et des consignes post-extraction. J'accepte l'intervention."},
+   {id:"ct3",title:"Consentement — Blanchiment dentaire",category:"blanchiment",requiresSignature:true,active:true,content:"Je reconnais avoir été informé(e) des modalités, bénéfices attendus et limites du blanchiment, ainsi que des effets secondaires possibles (sensibilité transitoire). J'accepte le traitement."},
+   {id:"ct4",title:"Consentement — Anesthésie locale",category:"anesthésie",requiresSignature:true,active:true,content:"J'ai été informé(e) du recours à une anesthésie locale, de son déroulement et de ses risques rares (réaction allergique, hématome). J'ai signalé mes antécédents et traitements en cours. J'accepte l'anesthésie."}];
+  portalSaveLS();}
+/* ====================== VUE PORTAIL (cabinet) ====================== */
+function ViewPortal(){portalBoot();portalStartPoll();
+  const tab=state.tab.portal||"dashboard";const wrap=el("div",{});
+  wrap.appendChild(el("div",{class:"tabbar"},...[["dashboard","Tableau de bord"],["docs","Documents envoyés"],["consents","Modèles de consentement"]]
+    .map(([k,l])=>el("button",{class:tab===k?"active":"",onclick:()=>{state.tab.portal=k;render();}},l))));
+  if(PORTAL.missing)wrap.appendChild(el("div",{class:"notice",style:"background:#fff8ef;border:1px solid #f6d9b0;margin:6px 0;display:flex;gap:10px;align-items:center"},el("span",{style:"flex:1"},"🌐 Mode local. Activez la synchro pour partager le portail patient entre appareils."),can("settings")?el("button",{class:"btn sm primary",onclick:portalEnableModal},"⚙️ Activer la synchro"):null));
+  else if(PORTAL.online)wrap.appendChild(el("div",{style:"font-size:11.5px;color:var(--green);margin:4px 0 8px"},"🟢 Synchronisé en ligne."));
+  if(tab==="dashboard")wrap.appendChild(PortalDashboard());
+  else if(tab==="docs")wrap.appendChild(PortalDocsView());
+  else if(tab==="consents")wrap.appendChild(PortalConsentsView());
+  return wrap;}
+function portalEnableModal(){const body=el("div",{},el("div",{class:"hint",style:"margin-bottom:8px"},"Créez la table dédiée : Supabase → SQL Editor → Run :"),el("textarea",{rows:"6",readonly:true,style:"width:100%;font-family:monospace;font-size:11.5px;border:1px solid var(--line);border-radius:8px;padding:8px"},PORTAL_SQL));
+  modalOpen("Activer le portail patient en ligne",body,[{label:"Fermer",fn:modalClose},{label:"📋 Copier",fn:()=>{if(navigator.clipboard)navigator.clipboard.writeText(PORTAL_SQL);toast("SQL copié");}},{label:"🔌 Tester",primary:true,fn:async()=>{try{await supaGet("wc_portal?select=id&limit=1");PORTAL.missing=false;PORTAL.online=true;PORTAL.loaded=false;await portalBoot(true);modalClose();render();toast("Portail synchronisé ✓");}catch(e){toast("Table absente — exécutez le SQL","warn");}}}]);}
+function PortalDashboard(){const wrap=el("div",{class:"grid"});const docs=PORTAL.docs;
+  const pend=docs.filter(d=>d.requiresSignature&&["Signé","Refusé","Annulé","Archivé"].indexOf(portalStatusOf(d))<0);
+  const signed=docs.filter(d=>portalStatusOf(d)==="Signé");const opened=docs.filter(d=>d.openedAt);const expired=docs.filter(d=>portalStatusOf(d)==="Expiré");
+  const k=el("div",{class:"kpis"});
+  k.appendChild(kpi("Patients invités",num(PORTAL.access.filter(a=>a.status!=="Non invité").length),{ic:"📨"}));
+  k.appendChild(kpi("Actions en attente",num(pend.length),{ic:"⏳",sub:"à signer/compléter"}));
+  k.appendChild(kpi("Signés",num(signed.length),{ic:"✍️"}));
+  k.appendChild(kpi("Taux d'ouverture",docs.length?pct(Math.round(opened.length/docs.length*100)):"—",{ic:"👁️"}));
+  k.appendChild(kpi("Taux de signature",docs.filter(d=>d.requiresSignature).length?pct(Math.round(signed.length/docs.filter(d=>d.requiresSignature).length*100)):"—",{ic:"📈"}));
+  k.appendChild(kpi("Expirés",num(expired.length),{ic:"⌛"}));
+  wrap.appendChild(k);
+  const panel=el("div",{class:"panel"},el("div",{class:"ph"},el("h3",{},"Actions patients en attente"),el("span",{class:"sub"},pend.length+" documents")));
+  const tb=el("div",{class:"pb"});
+  if(!pend.length)tb.appendChild(el("div",{class:"empty"},"Aucune action en attente. 👍"));
+  pend.sort((a,b)=>(a.expiresAt||"").localeCompare(b.expiresAt||"")).slice(0,20).forEach(d=>{const st=portalStatusOf(d);
+    tb.appendChild(el("div",{style:"display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)"},
+      el("span",{},({devis:"💶",consent:"📝",document:"📎",questionnaire:"🩺"})[d.docType]||"📄"),
+      el("div",{style:"flex:1"},el("b",{},d.patientName),el("div",{class:"as"},d.title+" · envoyé le "+fmtDate((d.sentAt||"").slice(0,10))+(d.expiresAt?" · expire "+fmtDate(d.expiresAt):""))),
+      el("span",{class:"pill "+(PORTAL_STATUS_CLS[st]||"gray")},st),el("button",{class:"btn sm",onclick:()=>openPortalDocDetail(d.id)},"Détail")));});
+  panel.appendChild(tb);wrap.appendChild(panel);return wrap;}
+function PortalDocsView(){const wrap=el("div",{});state.portalF=state.portalF||{type:"all",status:"all"};const f=state.portalF;
+  const typeSel=el("select",{onchange:e=>{f.type=e.target.value;render();}},el("option",{value:"all"},"Tous types"),...Object.keys(PORTAL_DOCTYPES).map(k=>el("option",{value:k,...(f.type===k?{selected:1}:{})},PORTAL_DOCTYPES[k])));
+  const stSel=el("select",{onchange:e=>{f.status=e.target.value;render();}},el("option",{value:"all"},"Tous statuts"),...Object.keys(PORTAL_STATUS_CLS).map(s=>el("option",{value:s,...(f.status===s?{selected:1}:{})},s)));
+  wrap.appendChild(el("div",{class:"filters"},typeSel,stSel,el("div",{class:"spacer",style:"flex:1"})));
+  let rows=PORTAL.docs.slice();if(f.type!=="all")rows=rows.filter(d=>d.docType===f.type);if(f.status!=="all")rows=rows.filter(d=>portalStatusOf(d)===f.status);
+  rows.sort((a,b)=>(b.sentAt||"").localeCompare(a.sentAt||""));
+  const panel=el("div",{class:"panel"},el("div",{class:"ph"},el("h3",{},"Documents envoyés au portail"),el("span",{class:"sub"},rows.length)));
+  const t=el("table",{},el("thead",{},el("tr",{},el("th",{},"Patient"),el("th",{},"Document"),el("th",{},"Type"),el("th",{},"Statut"),el("th",{},"Envoyé"),el("th",{},"Signé"),el("th",{},""))));
+  const tbb=el("tbody",{});
+  if(!rows.length)tbb.appendChild(el("tr",{},el("td",{colspan:7},el("div",{class:"empty"},"Aucun document."))));
+  rows.forEach(d=>{const st=portalStatusOf(d);tbb.appendChild(el("tr",{},el("td",{},el("b",{},d.patientName)),el("td",{},d.title),el("td",{},PORTAL_DOCTYPES[d.docType]),el("td",{},el("span",{class:"pill "+(PORTAL_STATUS_CLS[st]||"gray")},st)),el("td",{class:"tline"},fmtDate((d.sentAt||"").slice(0,10))),el("td",{class:"tline"},d.signedAt?fmtDate(d.signedAt.slice(0,10)):"—"),el("td",{class:"right"},el("button",{class:"btn sm",onclick:()=>openPortalDocDetail(d.id)},"Détail"))));});
+  t.appendChild(tbb);panel.appendChild(t);wrap.appendChild(panel);return wrap;}
+function PortalConsentsView(){const wrap=el("div",{});
+  wrap.appendChild(el("div",{class:"filters"},can("settings")?el("button",{class:"btn primary",onclick:()=>openConsentTpl({})},"＋ Nouveau modèle"):null));
+  const panel=el("div",{class:"panel"},el("div",{class:"ph"},el("h3",{},"Modèles de consentement"),el("span",{class:"sub"},PORTAL.tpls.length)));
+  const tb=el("div",{class:"pb"});
+  PORTAL.tpls.forEach(t=>tb.appendChild(el("div",{style:"display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"},el("span",{},"📝"),el("div",{style:"flex:1"},el("b",{},t.title),el("div",{class:"as"},t.category+(t.active===false?" · inactif":""))),can("settings")?el("button",{class:"btn sm",onclick:()=>openConsentTpl(t)},"Modifier"):null)));
+  if(!PORTAL.tpls.length)tb.appendChild(el("div",{class:"empty"},"Aucun modèle."));
+  panel.appendChild(tb);wrap.appendChild(panel);return wrap;}
+function openConsentTpl(t){const isNew=!t.id;t=Object.assign({id:uid("ct"),requiresSignature:true,active:true,category:"autre"},t);
+  const title=el("input",{value:t.title||"",placeholder:"Titre du consentement"});
+  const cat=el("select",{},...CONSENT_CATS.map(c=>el("option",{value:c,...(c===t.category?{selected:1}:{})},c)));
+  const content=el("textarea",{rows:"7",style:"width:100%"},t.content||"");
+  modalOpen(isNew?"Nouveau modèle":"Modifier le modèle",el("div",{},el("div",{class:"field2"},el("div",{class:"field"},el("label",{},"Titre *"),title),el("div",{class:"field"},el("label",{},"Catégorie"),cat)),el("div",{class:"field"},el("label",{},"Texte du consentement"),content)),
+    [{label:"Annuler",fn:modalClose},{label:"Enregistrer",primary:true,fn:()=>{if(!title.value.trim()){toast("Titre requis","warn");return;}t.title=title.value.trim();t.category=cat.value;t.content=content.value;const i=PORTAL.tpls.findIndex(x=>x.id===t.id);if(i<0)PORTAL.tpls.push(t);else PORTAL.tpls[i]=t;portalPersist([portalRow("tpl",t.id,t.id,t)]);modalClose();render();toast("Modèle enregistré");}}]);}
+function openPortalDocDetail(id){const d=PORTAL.docs.find(x=>x.id===id);if(!d)return;const st=portalStatusOf(d);
+  const body=el("div",{});
+  body.appendChild(el("div",{style:"display:flex;gap:8px;align-items:center;margin-bottom:10px"},el("span",{class:"pill "+(PORTAL_STATUS_CLS[st]||"gray")},st),el("span",{class:"mono",style:"color:var(--muted);font-size:12px"},d.id)));
+  const kv=(l,v)=>el("div",{class:"kv"},el("span",{class:"muted"},l),el("b",{},v||"—"));
+  body.appendChild(el("div",{class:"den"},kv("Patient",d.patientName),kv("Type",PORTAL_DOCTYPES[d.docType]),kv("Envoyé le",fmtDate((d.sentAt||"").slice(0,10))+" par "+(d.sentBy||"")),kv("Ouvert le",d.openedAt?fmtDateTime(d.openedAt):"—"),kv("Signé le",d.signedAt?fmtDateTime(d.signedAt):"—"),d.docType==="devis"?kv("Montant",(d.amount||0)+" €"):null));
+  if(d.refusedAt)body.appendChild(el("div",{style:"background:#fdecec;border:1px solid #f6c9c9;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px"},"❌ Refusé le "+fmtDate(d.refusedAt.slice(0,10))+(d.refuseReason?" — "+d.refuseReason:"")));
+  if(d.signature){body.appendChild(el("h3",{style:"font-size:14px;margin:10px 0 5px"},"Signature électronique"));body.appendChild(el("div",{class:"den"},kv("Horodatage",fmtDateTime(d.signature.signedAt)),kv("IP",d.signature.ip),kv("Session",d.signature.session)));if(d.signature.data)body.appendChild(el("img",{src:d.signature.data,style:"max-height:70px;border:1px solid var(--line);border-radius:6px;background:#fff;margin-top:6px"}));}
+  if((d.events||[]).length){body.appendChild(el("h3",{style:"font-size:14px;margin:12px 0 5px"},"Historique"));const tl=el("div",{class:"lab-timeline"});[...d.events].reverse().forEach(e=>tl.appendChild(el("div",{class:"lab-tl-item"},el("span",{class:"dot"}),el("div",{},el("b",{},e.ns||e.type),el("span",{class:"muted",style:"font-size:11px;margin-left:6px"},fmtDateTime(e.at)+" · "+(e.actor||""))))));body.appendChild(tl);}
+  const acts=[{label:"Fermer",fn:modalClose}];
+  const a=portalAccess(d.patientId);if(a)acts.push({label:"🔗 Copier le lien patient",fn:()=>{if(navigator.clipboard)navigator.clipboard.writeText(portalAbsLink(a));toast("Lien copié");}});
+  if(d.signedAt)acts.push({label:"🖨️ PDF signé",fn:()=>portalSignedPDF(id)});
+  if(["Envoyé","Ouvert","Consulté"].indexOf(st)>=0)acts.push({label:"🔁 Relancer",fn:()=>{portalEvent(d,"Relance");portalSaveDoc(d,"Relance enregistrée");}});
+  modalOpen(d.title+" — "+d.patientName,body,acts,"wide");}
+/* ---- bloc dossier patient ---- */
+function patientPortalBlock(pid){portalBoot();portalStartPoll();
+  const a=portalEnsureAccess(pid);const docs=portalDocsFor(pid);
+  const panel=el("div",{style:"border:1px solid var(--line);border-radius:11px;margin-bottom:14px;overflow:hidden"});
+  panel.appendChild(el("div",{class:"ph",style:"background:#f7f9fd"},el("h3",{},"🌐 Portail patient"),el("span",{class:"pill "+(a.status==="Non invité"?"gray":"info"),style:"margin-left:8px"},a.status),el("div",{class:"spacer",style:"flex:1"}),
+    el("button",{class:"btn sm primary",onclick:()=>portalInvite(pid)},a.status==="Non invité"?"Inviter":"Renvoyer l'invitation")));
+  const pb=el("div",{class:"pb"});
+  pb.appendChild(el("div",{style:"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"},
+    el("button",{class:"btn sm",onclick:()=>portalSendQuestionnaire(pid)},"🩺 Questionnaire"),
+    el("button",{class:"btn sm",onclick:()=>portalSendDevis(pid)},"💶 Devis à signer"),
+    el("button",{class:"btn sm",onclick:()=>portalSendConsent(pid)},"📝 Consentement"),
+    el("button",{class:"btn sm",onclick:()=>portalSendDocument(pid)},"📎 Document"),
+    el("button",{class:"btn sm ghost",onclick:()=>{if(navigator.clipboard)navigator.clipboard.writeText(portalAbsLink(a));toast("Lien du portail copié");}},"🔗 Lien")));
+  if(!docs.length)pb.appendChild(el("div",{class:"muted",style:"font-size:13px"},"Aucun document envoyé au portail. Invitez le patient et envoyez-lui ses documents à signer."));
+  docs.forEach(d=>{const st=portalStatusOf(d);pb.appendChild(el("div",{style:"display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer",onclick:()=>openPortalDocDetail(d.id)},
+    el("span",{},({devis:"💶",consent:"📝",document:"📎",questionnaire:"🩺"})[d.docType]||"📄"),
+    el("div",{style:"flex:1;min-width:0"},el("b",{},d.title),el("div",{class:"as"},"envoyé le "+fmtDate((d.sentAt||"").slice(0,10))+(d.signedAt?" · signé le "+fmtDate(d.signedAt.slice(0,10)):""))),
+    el("span",{class:"pill "+(PORTAL_STATUS_CLS[st]||"gray")},st)));});
+  panel.appendChild(pb);return panel;}
 
 /* ---------- Boot ---------- */
 load();authRestore();render();authBoot();
